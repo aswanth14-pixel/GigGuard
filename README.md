@@ -2,7 +2,7 @@
 
 <img width="1024" height="252" alt="image" src="https://github.com/user-attachments/assets/4fd90be5-1d39-4576-ac05-3291a3a07477" />
 
-
+[▶ Watch 2-Minute Strategy & Prototype Walkthrough](https://youtu.be/VDZAhBTYnbw)
 ---
 
 ## 1. What Is GigGuard
