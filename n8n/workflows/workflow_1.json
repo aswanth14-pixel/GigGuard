@@ -1,0 +1,72 @@
+{
+  "name": "GG Daily Pre-Shift Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 3, "triggerAtMinute": 0 }]
+        }
+      },
+      "name": "Cron 8:30am IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "8:30am IST = 3:00am UTC"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openweathermap.org/data/2.5/forecast?zip={{$json.workerPincode}},IN&appid={{$env.OPENWEATHERMAP_KEY}}&units=metric",
+        "method": "GET"
+      },
+      "name": "Fetch Weather Forecast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.data.gov.in/resource/3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69?api-key={{$env.CPCB_KEY}}&format=json&filters[station]={{$json.workerCity}}",
+        "method": "GET"
+      },
+      "name": "Fetch CPCB AQI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const weather = $input.first().json;\nconst aqi = $input.last().json;\n\nconst forecast = weather.list?.[0];\nconst rain = forecast?.rain?.['3h'] || 0;\nconst temp = forecast?.main?.temp || 0;\nconst desc = forecast?.weather?.[0]?.description || 'clear';\nconst aqiVal = aqi.records?.[0]?.pollutant_avg || 'N/A';\n\nlet riskLevel = 'LOW';\nif (rain > 30 || aqiVal > 200) riskLevel = 'HIGH';\nelse if (rain > 10 || aqiVal > 100) riskLevel = 'MODERATE';\n\nreturn [{\n  json: {\n    riskLevel,\n    temperature: temp,\n    rainfall: rain,\n    description: desc,\n    aqi: aqiVal,\n    message: `☀️ *GigGuard Daily Briefing*\\n\\n🌡️ Temp: ${temp}°C\\n🌧️ Rain: ${rain}mm\\n💨 AQI: ${aqiVal}\\n📊 Risk: *${riskLevel}*\\n\\n${riskLevel === 'HIGH' ? '⚠️ High disruption risk — your insurance is active!' : '✅ Low risk day — ride safe!'}`\n  }\n}];"
+      },
+      "name": "Build Risk Forecast",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v17.0/{{$env.META_PHONE_NUMBER_ID}}/messages",
+        "method": "POST",
+        "headers": {
+          "Authorization": "=Bearer {{$env.META_WHATSAPP_TOKEN}}"
+        },
+        "body": {
+          "messaging_product": "whatsapp",
+          "to": "={{$json.workerPhone}}",
+          "type": "text",
+          "text": { "body": "={{$json.message}}" }
+        }
+      },
+      "name": "Send WhatsApp Briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Cron 8:30am IST": { "main": [[{ "node": "Fetch Weather Forecast", "type": "main", "index": 0 }, { "node": "Fetch CPCB AQI", "type": "main", "index": 0 }]] },
+    "Fetch Weather Forecast": { "main": [[{ "node": "Build Risk Forecast", "type": "main", "index": 0 }]] },
+    "Fetch CPCB AQI": { "main": [[{ "node": "Build Risk Forecast", "type": "main", "index": 0 }]] },
+    "Build Risk Forecast": { "main": [[{ "node": "Send WhatsApp Briefing", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "timezone": "Asia/Kolkata" }
+}

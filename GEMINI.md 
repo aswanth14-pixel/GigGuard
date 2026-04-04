@@ -1,0 +1,8 @@
+## GigGuard Project Rules
+- Stack: React PWA + Node.js/Express + Python FastAPI + Supabase + n8n
+- Always use conventional commits: feat:, fix:, docs:
+- Never commit .env files
+- Never install paid npm packages — free tiers only
+- Keep ML models inside /ml/models/
+- Ask permission before running any database migration
+- All API secrets must come from .env, never hardcoded

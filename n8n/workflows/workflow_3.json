@@ -1,0 +1,131 @@
+{
+  "name": "GG Weekly Auto-Renewal",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtDay": 1, "triggerAtHour": 0, "triggerAtMinute": 30 }]
+        }
+      },
+      "name": "Monday 6:00am IST Cron",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Monday 6am IST = Monday 0:30am UTC"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/policies?status=eq.active&select=*,workers(*)",
+        "method": "GET",
+        "headers": {
+          "apikey": "={{$env.SUPABASE_ANON_KEY}}",
+          "Authorization": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
+        }
+      },
+      "name": "Fetch Active Policies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.razorpay.com/v1/subscriptions/{{$json.razorpay_subscription_id}}/charge",
+        "method": "POST",
+        "authentication": "basicAuth",
+        "credentials": {
+          "user": "={{$env.RAZORPAY_KEY}}",
+          "password": "={{$env.RAZORPAY_SECRET}}"
+        },
+        "body": {
+          "amount": "={{$json.weekly_premium * 100}}",
+          "currency": "INR"
+        }
+      },
+      "name": "Razorpay Auto-Debit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.statusCode === 200}}", "value2": true }]
+        }
+      },
+      "name": "Payment Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v17.0/{{$env.META_PHONE_NUMBER_ID}}/messages",
+        "method": "POST",
+        "headers": {
+          "Authorization": "=Bearer {{$env.META_WHATSAPP_TOKEN}}"
+        },
+        "body": {
+          "messaging_product": "whatsapp",
+          "to": "={{$json.workerPhone}}",
+          "type": "text",
+          "text": { "body": "✅ *GigGuard Renewed!*\n\nYour weekly premium of ₹{{$json.weekly_premium}} has been auto-debited.\n\n🛡️ Coverage: Active for next 7 days\n📱 View details in the GigGuard app" }
+        }
+      },
+      "name": "WhatsApp Success Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/policies",
+        "method": "PATCH",
+        "headers": {
+          "apikey": "={{$env.SUPABASE_ANON_KEY}}",
+          "Authorization": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
+        },
+        "body": {
+          "status": "grace_period",
+          "grace_expires_at": "={{new Date(Date.now() + 24*60*60*1000).toISOString()}}"
+        },
+        "qs": "id=eq.{{$json.policyId}}"
+      },
+      "name": "Set 24hr Grace Period",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 350]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v17.0/{{$env.META_PHONE_NUMBER_ID}}/messages",
+        "method": "POST",
+        "headers": {
+          "Authorization": "=Bearer {{$env.META_WHATSAPP_TOKEN}}"
+        },
+        "body": {
+          "messaging_product": "whatsapp",
+          "to": "={{$json.workerPhone}}",
+          "type": "text",
+          "text": { "body": "⚠️ *GigGuard Payment Failed*\n\nWe couldn't debit ₹{{$json.weekly_premium}} for your weekly renewal.\n\n⏰ You have a *24-hour grace period* — your coverage is still active.\n\nPlease ensure sufficient balance and retry in the app." }
+        }
+      },
+      "name": "WhatsApp Grace Notice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 350]
+    }
+  ],
+  "connections": {
+    "Monday 6:00am IST Cron": { "main": [[{ "node": "Fetch Active Policies", "type": "main", "index": 0 }]] },
+    "Fetch Active Policies": { "main": [[{ "node": "Razorpay Auto-Debit", "type": "main", "index": 0 }]] },
+    "Razorpay Auto-Debit": { "main": [[{ "node": "Payment Success?", "type": "main", "index": 0 }]] },
+    "Payment Success?": {
+      "main": [
+        [{ "node": "WhatsApp Success Confirmation", "type": "main", "index": 0 }],
+        [{ "node": "Set 24hr Grace Period", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set 24hr Grace Period": { "main": [[{ "node": "WhatsApp Grace Notice", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "timezone": "Asia/Kolkata" }
+}

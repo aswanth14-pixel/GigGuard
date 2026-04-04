@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base layer overrides ─────────────────────────────── */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1e293b #0b0f1a;
+  }
+  *::-webkit-scrollbar { width: 6px; }
+  *::-webkit-scrollbar-track { background: #0b0f1a; }
+  *::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.3);
+    color: #e2e8f0;
+  }
+}
+
+/* ── Component utilities ──────────────────────────────── */
+@layer components {
+  .gg-card {
+    @apply bg-gg-card border border-gg-border rounded-2xl p-5
+           transition-all duration-300 hover:border-gg-accent/30;
+  }
+
+  .gg-btn {
+    @apply px-6 py-3 rounded-xl font-semibold text-sm
+           transition-all duration-200 active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .gg-btn-primary {
+    @apply gg-btn bg-gg-accent text-white
+           hover:bg-gg-accent-light hover:shadow-lg hover:shadow-gg-accent/20;
+  }
+
+  .gg-btn-outline {
+    @apply gg-btn border border-gg-border text-gg-text
+           hover:border-gg-accent hover:text-gg-accent;
+  }
+
+  .gg-input {
+    @apply w-full bg-gg-surface border border-gg-border rounded-xl
+           px-4 py-3 text-gg-text placeholder:text-gg-muted
+           focus:outline-none focus:border-gg-accent focus:ring-1 focus:ring-gg-accent/30
+           transition-colors duration-200;
+  }
+
+  .gg-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           text-xs font-medium uppercase tracking-wide;
+  }
+
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+}
+
+/* ── Gradient utilities ───────────────────────────────── */
+.gradient-accent {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 80%, rgba(16,185,129,0.04) 0%, transparent 50%);
+}
+
+/* ── Animated dot for live status ─────────────────────── */
+.live-dot {
+  @apply relative inline-block w-2 h-2 rounded-full bg-gg-success;
+}
+.live-dot::after {
+  content: '';
+  @apply absolute inset-0 rounded-full bg-gg-success animate-ping;
+}

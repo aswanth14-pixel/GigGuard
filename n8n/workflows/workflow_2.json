@@ -1,0 +1,54 @@
+{
+  "name": "GG Payout Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/payouts",
+        "method": "GET",
+        "headers": {
+          "apikey": "={{$env.SUPABASE_ANON_KEY}}",
+          "Authorization": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
+        },
+        "notes": "Triggered by Supabase webhook on payouts INSERT"
+      },
+      "name": "Supabase Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "gigguard-payout-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payout = $input.first().json.record || $input.first().json;\n\nconst amount = payout.amount;\nconst reason = payout.reason === 'weather_disruption' ? '🌧️ Weather Disruption' : '📱 Platform Outage';\nconst timestamp = new Date(payout.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });\n\nconst message = `💰 *GigGuard Payout Alert*\\n\\n✅ Amount: *₹${amount}*\\n📋 Trigger: ${reason}\\n🕐 Time: ${timestamp}\\n\\nFunds will be credited to your UPI within 30 minutes.`;\n\nreturn [{ json: { ...payout, message } }];"
+      },
+      "name": "Format Payout Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v17.0/{{$env.META_PHONE_NUMBER_ID}}/messages",
+        "method": "POST",
+        "headers": {
+          "Authorization": "=Bearer {{$env.META_WHATSAPP_TOKEN}}"
+        },
+        "body": {
+          "messaging_product": "whatsapp",
+          "to": "={{$json.workerPhone}}",
+          "type": "text",
+          "text": { "body": "={{$json.message}}" }
+        }
+      },
+      "name": "Send WhatsApp Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Supabase Webhook Trigger": { "main": [[{ "node": "Format Payout Message", "type": "main", "index": 0 }]] },
+    "Format Payout Message": { "main": [[{ "node": "Send WhatsApp Notification", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "timezone": "Asia/Kolkata" }
+}
